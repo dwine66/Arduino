@@ -43,7 +43,7 @@ Time Setup Code: http://playground.arduino.cc/code/time
 // RTC Zero:
 #include <RTCZero.h>
 
-//Time Setup:
+//Time Setup - conflicts with RTCZero, regardless of compile order
 //#include <TimeLib.h>
 
 // Initializations
@@ -52,7 +52,7 @@ Time Setup Code: http://playground.arduino.cc/code/time
 //WiFi Server:
 //
 char ssid[] = "CELLAR";      // your network SSID (name)
-char pass[] = "PuckStepsOnMushrooms";   // your network password
+char pass[] = "xx";   // your network password
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
 
 int status = WL_IDLE_STATUS;
@@ -334,4 +334,29 @@ void print2digits(int number) {
    }
    Serial.print(number);
 }
+
+void unixConv(long inputtime){
+  char leapflag;
+  long diff=inputtime-1483228800; //1/1/2017
+  int PSTdiff = diff-28800; //We are in the Pacific time zone (not going to worry about daylight savings time)
+  int diffday=(PSTdiff/86400);//should return an integer automatically
+  int diffyear=(diffday/(365*86400));
+  if(diffyear+2017 % 4 == 0){
+    leapflag='Y';
+  }
+    else{
+    leapflag='N';
+  } 
+  for (int y = 0; y=diffyear; y++){
+   
+  }
+
+}
+
+void monthCalc(char lf){
+int months[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+int leapmonths[] = {31,29,31,30,31,30,31,31,30,31,30,31};
+
+}
+
 
