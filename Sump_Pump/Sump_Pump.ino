@@ -44,7 +44,9 @@ Time Setup Code: http://playground.arduino.cc/code/time
 #include <RTCZero.h>
 
 //Time Setup - conflicts with RTCZero, regardless of compile order
-//#include <TimeLib.h>
+//Changed RTC variables and now it seems to compile OK
+
+#include <TimeLib.h>
 
 // Initializations
 
@@ -69,14 +71,14 @@ const int chipSelect = 4;
 /* Create an rtc object */
  RTCZero rtc;
 /* Change these values to set the current initial time */
- const byte seconds = 0;
- const byte minutes = 0;
- const byte hours = 12;
+byte Rseconds = 0;
+byte Rminutes = 0;
+byte Rhours = 12;
 
 /* Change these values to set the current initial date */
- const byte day = 5;
- const byte month = 2;
- const byte year = 17;
+byte Rday = 5;
+byte Rmonth = 2;
+int Ryear = 2017;
 
 //MKR Digital Pins
 const int FloatSensor = 2;
@@ -152,17 +154,29 @@ void setup() {
 
 //RTC Zero
 
+
+// Convert timestamp to RTC format (this is UTC time!)
+
+
+  Ryear=year(timestamp);
+  Rmonth=month(timestamp);
+  Rday=day(timestamp);
+  Rhours=hour(timestamp);
+  Rminutes=minute(timestamp);
+  Rseconds=second(timestamp);
+
+
    rtc.begin(); // initialize RTC
 
    // Set the time
-   rtc.setHours(hours);
-   rtc.setMinutes(minutes);
-   rtc.setSeconds(seconds);
+   rtc.setHours(Rhours);
+   rtc.setMinutes(Rminutes);
+   rtc.setSeconds(Rseconds);
 
    // Set the date
-   rtc.setDay(day);
-   rtc.setMonth(month);
-   rtc.setYear(year);
+   rtc.setDay(Rday);
+   rtc.setMonth(Rmonth);
+   rtc.setYear(Ryear);
 
    // you can use also
    //rtc.setTime(hours, minutes, seconds);
@@ -180,10 +194,9 @@ int readtime = 60000; //Start at one minute
 void loop() {
   // Main loop just sits and watches stuff....
 delay(10000);
+
  long timestamp=WiFi.getTime();
-
-  Serial.println(timestamp); 
-
+ 
 //Always check the float sensor!
 Serial.println(digitalRead(FloatSensor));
 
@@ -250,7 +263,6 @@ void CallWiFi(){
   }
 }
 
-
 //WiFi
 void printWiFiStatus() {
   // print the SSID of the network you're attached to:
@@ -271,12 +283,12 @@ void printWiFiStatus() {
 
 //Put SD Card Functions here
 
-void SDCardWrite(long time) {
+void SDCardWrite(long currenttime) {
   // make a string for assembling the data to log:
   
   Serial.println("Writing data...");
   
-  String dataString = String(time)+",";
+  String dataString = String(currenttime)+",";
   dataString += String(digitalRead(FloatSensor)) + ",";
 
   // read three sensors and append to the string:
@@ -337,7 +349,7 @@ void print2digits(int number) {
 
 void unixConv(long inputtime){
   char leapflag;
-  long diff=inputtime-1483228800; //1/1/2017
+  long diff=inputtime-1483228800; // 1/1/2017
   int PSTdiff = diff-28800; //We are in the Pacific time zone (not going to worry about daylight savings time)
   int diffday=(PSTdiff/86400);//should return an integer automatically
   int diffyear=(diffday/(365*86400));
@@ -353,9 +365,9 @@ void unixConv(long inputtime){
 
 }
 
-void monthCalc(char lf){
-int months[] = {31,28,31,30,31,30,31,31,30,31,30,31};
-int leapmonths[] = {31,29,31,30,31,30,31,31,30,31,30,31};
+  void monthCalc(char lf){
+  int months[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+  int leapmonths[] = {31,29,31,30,31,30,31,31,30,31,30,31};
 
 }
 

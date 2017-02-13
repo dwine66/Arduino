@@ -1,0 +1,100 @@
+Sump_Pump:77: error: 'const byte day' redeclared as different kind of symbol
+
+  const byte day = 5;
+
+             ^
+
+In file included from C:\Users\Dave\Documents\GitHub\Arduino\Sump_Pump\Sump_Pump.ino:47:0:
+
+C:\Users\Dave\Documents\GitHub\Arduino\libraries\Time/TimeLib.h:112:9: error: previous declaration of 'int day(time_t)'
+
+ int     day(time_t t);     // the day for the given time
+
+         ^
+
+Sump_Pump:78: error: 'const byte month' redeclared as different kind of symbol
+
+  const byte month = 2;
+
+             ^
+
+In file included from C:\Users\Dave\Documents\GitHub\Arduino\Sump_Pump\Sump_Pump.ino:47:0:
+
+C:\Users\Dave\Documents\GitHub\Arduino\libraries\Time/TimeLib.h:116:9: error: previous declaration of 'int month(time_t)'
+
+ int     month(time_t t);   // the month for the given time
+
+         ^
+
+Sump_Pump:79: error: 'const byte year' redeclared as different kind of symbol
+
+  const byte year = 17;
+
+             ^
+
+In file included from C:\Users\Dave\Documents\GitHub\Arduino\Sump_Pump\Sump_Pump.ino:47:0:
+
+C:\Users\Dave\Documents\GitHub\Arduino\libraries\Time/TimeLib.h:118:9: error: previous declaration of 'int year(time_t)'
+
+ int     year(time_t t);    // the year for the given time
+
+         ^
+
+C:\Users\Dave\Documents\GitHub\Arduino\Sump_Pump\Sump_Pump.ino: In function 'void setup()':
+
+Sump_Pump:163: error: no matching function for call to 'RTCZero::setDay(<unresolved overloaded function type>)'
+
+    rtc.setDay(day);
+
+                  ^
+
+C:\Users\Dave\Documents\GitHub\Arduino\Sump_Pump\Sump_Pump.ino:163:18: note: candidate is:
+
+In file included from C:\Users\Dave\Documents\GitHub\Arduino\Sump_Pump\Sump_Pump.ino:44:0:
+
+C:\Users\Dave\Documents\GitHub\Arduino\libraries\RTCZero\src/RTCZero.h:77:8: note: void RTCZero::setDay(uint8_t)
+
+   void setDay(uint8_t day);
+
+        ^
+
+C:\Users\Dave\Documents\GitHub\Arduino\libraries\RTCZero\src/RTCZero.h:77:8: note:   no known conversion for argument 1 from '<unresolved overloaded function type>' to 'uint8_t {aka unsigned char}'
+
+Sump_Pump:164: error: no matching function for call to 'RTCZero::setMonth(<unresolved overloaded function type>)'
+
+    rtc.setMonth(month);
+
+                      ^
+
+C:\Users\Dave\Documents\GitHub\Arduino\Sump_Pump\Sump_Pump.ino:164:22: note: candidate is:
+
+In file included from C:\Users\Dave\Documents\GitHub\Arduino\Sump_Pump\Sump_Pump.ino:44:0:
+
+C:\Users\Dave\Documents\GitHub\Arduino\libraries\RTCZero\src/RTCZero.h:78:8: note: void RTCZero::setMonth(uint8_t)
+
+   void setMonth(uint8_t month);
+
+        ^
+
+C:\Users\Dave\Documents\GitHub\Arduino\libraries\RTCZero\src/RTCZero.h:78:8: note:   no known conversion for argument 1 from '<unresolved overloaded function type>' to 'uint8_t {aka unsigned char}'
+
+Sump_Pump:165: error: no matching function for call to 'RTCZero::setYear(<unresolved overloaded function type>)'
+
+    rtc.setYear(year);
+
+                    ^
+
+C:\Users\Dave\Documents\GitHub\Arduino\Sump_Pump\Sump_Pump.ino:165:20: note: candidate is:
+
+In file included from C:\Users\Dave\Documents\GitHub\Arduino\Sump_Pump\Sump_Pump.ino:44:0:
+
+C:\Users\Dave\Documents\GitHub\Arduino\libraries\RTCZero\src/RTCZero.h:79:8: note: void RTCZero::setYear(uint8_t)
+
+   void setYear(uint8_t year);
+
+        ^
+
+C:\Users\Dave\Documents\GitHub\Arduino\libraries\RTCZero\src/RTCZero.h:79:8: note:   no known conversion for argument 1 from '<unresolved overloaded function type>' to 'uint8_t {aka unsigned char}'
+
+exit status 1
+'const byte day' redeclared as different kind of symbol
