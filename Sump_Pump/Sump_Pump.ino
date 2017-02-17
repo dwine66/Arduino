@@ -1,6 +1,7 @@
 /* Sump Pump Control Software
 
 Dave Wine
+2/16/2017 Rev 0.2:  Trying to get RTCZero/TimeLib working....
 
 Module sources:
 WiFi Web Server: https://www.arduino.cc/en/Tutorial/Wifi101WiFiWebServer
@@ -45,7 +46,6 @@ Time Setup Code: http://playground.arduino.cc/code/time
 
 //Time Setup - conflicts with RTCZero, regardless of compile order
 //Changed RTC variables and now it seems to compile OK
-
 #include <TimeLib.h>
 
 // Initializations
@@ -78,7 +78,7 @@ byte Rhours = 12;
 /* Change these values to set the current initial date */
 byte Rday = 5;
 byte Rmonth = 2;
-int Ryear = 2017;
+byte Ryear = 17;
 
 //MKR Digital Pins
 const int FloatSensor = 2;
@@ -165,7 +165,6 @@ void setup() {
   Rminutes=minute(timestamp);
   Rseconds=second(timestamp);
 
-
    rtc.begin(); // initialize RTC
 
    // Set the time
@@ -182,8 +181,6 @@ void setup() {
    //rtc.setTime(hours, minutes, seconds);
    //rtc.setDate(day, month, year);
 
-
-   
 //Time between reads in milliseconds
 int readtime = 60000; //Start at one minute
 
