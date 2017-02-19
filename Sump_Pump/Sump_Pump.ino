@@ -1,7 +1,8 @@
 /* Sump Pump Control Software
 
 Dave Wine
-2/16/2017 Rev 0.2:  Trying to get RTCZero/TimeLib working....
+2/16/2017 Rev 0.2: Trying to get RTCZero/TimeLib working....
+2/19/2017 Rev 0.3: Using RBD Timer instead of RTCZero - works OK despite being for AVR boards.
 
 Module sources:
 WiFi Web Server: https://www.arduino.cc/en/Tutorial/Wifi101WiFiWebServer
@@ -41,12 +42,9 @@ Time Setup Code: http://playground.arduino.cc/code/time
 #include <SPI.h> 
 #include <SD.h>
 
-// RTC Zero:
-#include <RTCZero.h>
 
-//Time Setup - conflicts with RTCZero, regardless of compile order
-//Changed RTC variables and now it seems to compile OK
-#include <TimeLib.h>
+//RBD Timer:
+#include <RBD_Timer.h>
 
 // Initializations
 
@@ -54,31 +52,18 @@ Time Setup Code: http://playground.arduino.cc/code/time
 //WiFi Server:
 //
 char ssid[] = "CELLAR";      // your network SSID (name)
-char pass[] = "xx";   // your network password
+char pass[] = "xxs";   // your network password
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
-
 int status = WL_IDLE_STATUS;
 
 WiFiServer server(80);
 
+//Initialize an RBD Timer
+RBD::Timer timer;
 //
 //SD Card
 //
 const int chipSelect = 4;
-
-//RTC Zero
-
-/* Create an rtc object */
- RTCZero rtc;
-/* Change these values to set the current initial time */
-byte Rseconds = 0;
-byte Rminutes = 0;
-byte Rhours = 12;
-
-/* Change these values to set the current initial date */
-byte Rday = 5;
-byte Rmonth = 2;
-byte Ryear = 17;
 
 //MKR Digital Pins
 const int FloatSensor = 2;
@@ -89,6 +74,11 @@ const int DO = 9;
 
 //MKR Analog Pins
 const int Milone = 1;
+
+// Variables
+
+long ReadInt=10000; // Main interval variable used between sensor reads (milliseconds)
+long timestamp=1487523237; // 2/19/2017 8:51 am
 
 //MAIN SETUP
 
@@ -126,13 +116,7 @@ void setup() {
   //
   //SD Card
   //
-/*
-  // Open serial communications and wait for port to open:
-  Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
-*/
+
   Serial.print("Initializing SD card...");
 
   // see if the card is present and can be initialized:
@@ -144,62 +128,43 @@ void setup() {
   Serial.println("card initialized.");
   
  //Initialize time and other variables
- long timestamp=WiFi.getTime();
-    Serial.print("Initial Time: ");
-    Serial.println(timestamp);
- unsigned long systime=millis()  ; 
+  timestamp=WiFi.getTime();
+  Serial.print("Initial Time: ");
+  Serial.println(timestamp);
 
- // Calculate time for RTC based on WiFi:
-// this is a standalone project for later...
-
-//RTC Zero
-
-
-// Convert timestamp to RTC format (this is UTC time!)
-
-
-  Ryear=year(timestamp);
-  Rmonth=month(timestamp);
-  Rday=day(timestamp);
-  Rhours=hour(timestamp);
-  Rminutes=minute(timestamp);
-  Rseconds=second(timestamp);
-
-   rtc.begin(); // initialize RTC
-
-   // Set the time
-   rtc.setHours(Rhours);
-   rtc.setMinutes(Rminutes);
-   rtc.setSeconds(Rseconds);
-
-   // Set the date
-   rtc.setDay(Rday);
-   rtc.setMonth(Rmonth);
-   rtc.setYear(Ryear);
-
-   // you can use also
-   //rtc.setTime(hours, minutes, seconds);
-   //rtc.setDate(day, month, year);
-
-//Time between reads in milliseconds
-int readtime = 60000; //Start at one minute
-
+//Initialize the RBD Timer
+timer.setTimeout(ReadInt);
+timer.restart();
 }
 
 //MAIN LOOP
 
 void loop() {
   // Main loop just sits and watches stuff....
-delay(10000);
 
- long timestamp=WiFi.getTime();
- 
+  if(timer.onRestart()){
+  // Read sensors, etc.
+  
+  Serial.print(ReadInt/1000);
+  Serial.println(" seconds passed");
+  timestamp=WiFi.getTime();
+
 //Always check the float sensor!
-Serial.println(digitalRead(FloatSensor));
+  Serial.print("Float Sensor State: ");
+  Serial.println(digitalRead(FloatSensor));
 
-CallWiFi();
+  // Read sensors and write to card
+  SDCardWrite(timestamp);
+  //delay(1000);
+  } 
 
-SDCardWrite(timestamp);
+//Do other stuff
+
+
+  //Send data to server
+  CallWiFi();
+//Serial.print("doing other stuff ");
+
 }
 
 // Functions
@@ -256,7 +221,7 @@ void CallWiFi(){
 
     // close the connection:
     client.stop();
-    Serial.println("client disonnected");
+    Serial.println("client disconnected");
   }
 }
 
@@ -283,7 +248,7 @@ void printWiFiStatus() {
 void SDCardWrite(long currenttime) {
   // make a string for assembling the data to log:
   
-  Serial.println("Writing data...");
+  Serial.println("Writing data to card...");
   
   String dataString = String(currenttime)+",";
   dataString += String(digitalRead(FloatSensor)) + ",";
@@ -313,29 +278,6 @@ void SDCardWrite(long currenttime) {
   }
 }
 
-//RTC Functions
-
-void GetRTCTime(){
-   // Print date...
-   print2digits(rtc.getDay());
-   Serial.print("/");
-   print2digits(rtc.getMonth());
-   Serial.print("/");
-   print2digits(rtc.getYear());
-   Serial.print(" ");
-
-   // ...and time
-   print2digits(rtc.getHours());
-   Serial.print(":");
-   print2digits(rtc.getMinutes());
-   Serial.print(":");
-   print2digits(rtc.getSeconds());
-
-   Serial.println();
-
-   delay(1000);
-}
-
 
 void print2digits(int number) {
    if (number < 10) {
@@ -344,28 +286,5 @@ void print2digits(int number) {
    Serial.print(number);
 }
 
-void unixConv(long inputtime){
-  char leapflag;
-  long diff=inputtime-1483228800; // 1/1/2017
-  int PSTdiff = diff-28800; //We are in the Pacific time zone (not going to worry about daylight savings time)
-  int diffday=(PSTdiff/86400);//should return an integer automatically
-  int diffyear=(diffday/(365*86400));
-  if(diffyear+2017 % 4 == 0){
-    leapflag='Y';
-  }
-    else{
-    leapflag='N';
-  } 
-  for (int y = 0; y=diffyear; y++){
-   
-  }
-
-}
-
-  void monthCalc(char lf){
-  int months[] = {31,28,31,30,31,30,31,31,30,31,30,31};
-  int leapmonths[] = {31,29,31,30,31,30,31,31,30,31,30,31};
-
-}
 
 
