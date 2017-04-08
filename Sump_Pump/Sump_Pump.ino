@@ -3,12 +3,12 @@
 Dave Wine
 2/16/2017 Rev 0.2: Trying to get RTCZero/TimeLib working....
 2/19/2017 Rev 0.3: Using RBD Timer instead of RTCZero - works OK despite being for AVR boards.
+4/8/2017: Rev 0.4: Wired up with custom interconnect board and Milone 24" sensor attached.
 
 Module sources:
 WiFi Web Server: https://www.arduino.cc/en/Tutorial/Wifi101WiFiWebServer
 SD Card Controller:  Std Arduino library
-RTC Zero Module: https://www.arduino.cc/en/Tutorial/SimpleRTC
-Time Setup Code: http://playground.arduino.cc/code/time
+RBD Timer Code: http://robotsbigdata.com/docs-arduino-timer.html#example-setup
 
 */
 
@@ -52,7 +52,7 @@ Time Setup Code: http://playground.arduino.cc/code/time
 //WiFi Server:
 //
 char ssid[] = "CELLAR";      // your network SSID (name)
-char pass[] = "xxs";   // your network password
+char pass[] = "dasf";   // your network password
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
 int status = WL_IDLE_STATUS;
 
@@ -73,7 +73,8 @@ const int CLK = 8;
 const int DO = 9;
 
 //MKR Analog Pins
-const int Milone = 1;
+const int Milone = 5;
+const int AD590 = 6;
 
 // Variables
 
@@ -249,18 +250,25 @@ void SDCardWrite(long currenttime) {
   // make a string for assembling the data to log:
   
   Serial.println("Writing data to card...");
-  
+  // Timestamp
   String dataString = String(currenttime)+",";
+  //Float Sensor
   dataString += String(digitalRead(FloatSensor)) + ",";
+  
+  dataString += String(analogRead(Milone))+",";
+  
+  dataString += String(analogRead(AD590));
 
-  // read three sensors and append to the string:
+ /* read three sensors and append to the string:
   for (int analogPin = 0; analogPin < 3; analogPin++) {
     int sensor = analogRead(analogPin);
     dataString += String(sensor);
     if (analogPin < 2) {
       dataString += ",";
     }
+ 
   }
+*/
 // open the file. note that only one file can be open at a time,
   // so you have to close this one before opening another.
   File dataFile = SD.open("datalog.txt", FILE_WRITE);
