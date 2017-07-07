@@ -11,11 +11,14 @@ Dave Wine
 6/28/2017: Rev 0.8: Switched out MKR1000 - now using 'B'.  Fixed many issues and got initial SFs set up.  All sensors working!
 6/30/2017: Rev 0.9: Added averaging, alert, rearranged outputs
 7/1/2017: Rev 1.0: Got alarm logic and dynamic interval working; did initial calibration.  Yay!
+7/3/2017: Rev 1.1: Added Temboo Email service
+7/5/2017: Rev 1.2: Cleaned up alert logic and went to 8 hour updates
+
 Module sources:
 WiFi Web Server: https://www.arduino.cc/en/Tutorial/Wifi101WiFiWebServer
 SD Card Controller:  Std Arduino library
 RBD Timer Code: http://robotsbigdata.com/docs-arduino-timer.html#example-setup
-
+Temboo Source Code:https://temboo.com/arduino/others/send-an-email
 */
 
 /*
@@ -54,11 +57,18 @@ by Tom Igoe
 //ThingSpeak:
 #include "ThingSpeak.h"
 
+//Temboo:
+#include <SPI.h>
+#include <WiFi101.h>
+#include <WiFiSSLClient.h>
+#include <TembooSSL.h>
+#include "TembooAccount.h" // Contains Temboo account information
+
 //INITIALIZATIONS
 
 //WiFi Server:
 char ssid[] = "CELLAR";      // your network SSID (name)
-char pass[] = "tbd";   // your network password
+char pass[] = "dasf";   // your network password
 int keyIndex = 0;                 // your network key Index number (needed only for WEP)
 int status = WL_IDLE_STATUS; 
 WiFiServer server(80);
@@ -104,16 +114,20 @@ const float BoardV_SF = 3.3/1024*2; //Board V in counts * 2 for voltage divider
 
 const short Samp = 100; //Number of samples for averaging
 const short SampInt = 10; //Sampling interval for averaging in ms
+
 //Misc
 short i;
+String AlertString = "OK";
 
 // Constants
 long ReadInt = 30000; // Main interval variable used between sensor reads (milliseconds)
 long ReadUpd = ReadInt; //Update rate for ThingSpeak
 short ReadExp = 0; //Scaling exponent for ThingSpeak
+short MaxExp = 10; //Maximum exponent allowed (sets update email interval (2^MaxExp*Readint milliseconds)
 long timestamp = 1498916136; // 7/1/2017 6:35 am PDT
 long DryThres = 100; // This is the Milone count level that decides whether there is water in the sump or not.
-
+short Max_cm = 45; //45 is a guess - set this to the FS level above ground
+short Min_cm = 3; //3 is a guess - set this to the FS level above ground
 //ThingSpeak:
 // ***********************************************************************************************************
 
@@ -175,10 +189,17 @@ long DryThres = 100; // This is the Milone count level that decides whether ther
 unsigned long myChannelNumber = 229595;
 const char * myWriteAPIKey = "WWG74T7EB0L3UO1X";
 
+//Temboo:
 
+WiFiSSLClient SSLclient;
+int calls = 1;   // Execution count, so this doesn't run forever
+int maxCalls = 10;   // Maximum number of times the Choreo should be executed
 
 //MAIN SETUP
 void setup() {
+  //LED for battery signal
+  pinMode(LED_BUILTIN, OUTPUT);
+  
   //WiFi Server
   //Initialize serial and wait for port to open:
   Serial.begin(9600);
@@ -257,7 +278,11 @@ void setup() {
   #endif
 
   ThingSpeak.begin(client);
+
+  Email_Temboo("Rebooted and Connected OK");
 }
+  //Temboo:
+// Not sure I needed this stuff...
 
 //MAIN LOOP
 void loop() {
@@ -278,35 +303,52 @@ void loop() {
     //Read sensors and write to card
     SensorRead();
     SDCardWrite(timestamp);
-
+    AlertString = "Milone Read: " + String(Milone_Read);
+    
     //Update Interval Check
     //If dry, lengthen interval, otherwise shorten it
     if (Milone_Read < DryThres)
     {
       ReadExp++;  //if dry, lengthen sample time
       Serial.println("Incremented update exponent");
+      AlertString = AlertString + " " + "Less than " + String(Min_cm) + " cm water";
     }
     else
     {
-      //Snap back if something is wrong or it gets wet..
-      Serial.println("Reset update exponent to 0 - wet");
-      ReadExp = 0;
+      //Decrement if it gets wet..
+      Serial.println("Decrement exponent - wet");
+      ReadExp--;        
+      AlertString = AlertString + " " + String(Milone_Calc) + " cm water (xx cm triggers float)";
+      
       if  (ReadUpd != ReadInt){
         ReadUpd = ReadInt;
         tUpdate.setTimeout(ReadUpd);
         tUpdate.restart();
       }
     }  
-    // Limit to 2^16 milliseconds (about 18 hours)
-    if (ReadExp > 16)
+    // Limit to 2^MaxExp milliseconds
+    if (ReadExp > MaxExp)
     {
-      ReadExp=16;
+      ReadExp=MaxExp;
+    }
+
+    if (ReadExp < 0)
+    {
+      ReadExp = 0;
     }
 
     // Snap back if on alert
     if (Alert != 0)
     {
       ReadExp=0;
+      
+      if (Alert == 1){
+        AlertString = "Running on battery: "+ AlertString;
+      }
+      else {
+        AlertString = "Float Sensor Triggered! " + AlertString;
+      }  
+          
       Serial.println("Reset update exponent to 0 - problem");
       if  (ReadUpd != ReadInt){
         ReadUpd = ReadInt;
@@ -319,7 +361,6 @@ void loop() {
   
   // Restart sensor timer
   tSensor.restart();
-
   } 
 
   if(tUpdate.onExpired()){
@@ -365,6 +406,10 @@ void loop() {
 
       tUpdate.setTimeout(ReadUpd);
       tUpdate.restart();
+
+      //Send email through Temboo
+      //AlertString = "Running OK";
+      Email_Temboo(AlertString);
   }
   // Vary this based on history
   // delay(ReadUpd); // ThingSpeak will only accept updates every 15 seconds. 
@@ -485,9 +530,11 @@ i=0;
   }
   else if (BoardV_Read<4) {
     Alert = 1;  // On battery
+    digitalWrite(LED_BUILTIN,HIGH);
   }
   else {
     Alert = 0;
+    digitalWrite(LED_BUILTIN,LOW);
   }
 
 }
@@ -547,3 +594,49 @@ void print2digits(int number) {
    }
    Serial.print(number);
 }
+
+//Temboo email
+void Email_Temboo(String Message){
+
+  Serial.println("Running SendEmail - Run #" + String(calls++));
+
+  TembooChoreoSSL SendEmailChoreo(SSLclient);
+
+  // Invoke the Temboo client
+  SendEmailChoreo.begin();
+
+  // Set Temboo account credentials
+  SendEmailChoreo.setAccountName(TEMBOO_ACCOUNT);
+  SendEmailChoreo.setAppKeyName(TEMBOO_APP_KEY_NAME);
+  SendEmailChoreo.setAppKey(TEMBOO_APP_KEY);
+  SendEmailChoreo.setDeviceType(TEMBOO_DEVICE_TYPE);
+
+  // Set Choreo inputs
+  String FromAddressValue = "dwine66@gmail.com";
+  SendEmailChoreo.addInput("FromAddress", FromAddressValue);
+  String UsernameValue = "dwine66@gmail.com";
+  SendEmailChoreo.addInput("Username", UsernameValue);
+  String ToAddressValue = "dwine66@gmail.com";
+  SendEmailChoreo.addInput("ToAddress", ToAddressValue);
+  String SubjectValue = "Sump Pump Update";
+  SendEmailChoreo.addInput("Subject", SubjectValue);
+  String PasswordValue = "znthlrcmkypmqeji";
+  SendEmailChoreo.addInput("Password", PasswordValue);
+  String MessageBodyValue = Message;
+  SendEmailChoreo.addInput("MessageBody", MessageBodyValue);
+
+  // Identify the Choreo to run
+  SendEmailChoreo.setChoreo("/Library/Google/Gmail/SendEmail");
+
+  // Run the Choreo; when results are available, print them to serial
+  SendEmailChoreo.run();
+
+  while(SendEmailChoreo.available()) {
+    char c = SendEmailChoreo.read();
+//    Serial.print(c);
+  }
+  SendEmailChoreo.close();
+}
+
+  //Serial.println("\nWaiting...\n");
+  //delay(30000); // wait 30 seconds between SendEmail calls
