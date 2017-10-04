@@ -13,7 +13,8 @@ Dave Wine
 7/1/2017: Rev 1.0: Got alarm logic and dynamic interval working; did initial calibration.  Yay!
 7/3/2017: Rev 1.1: Added Temboo Email service
 7/5/2017: Rev 1.2: Cleaned up alert logic and went to 8 hour updates
-
+9/9/2017: Rev 1.3: Dropped Temboo email service (not worth spending money on).
+9/29/2017: Rev 1.4: Dropped dynamic reporting interval - wasn't working right - and set to 5 min ThingSpeak update
 Module sources:
 WiFi Web Server: https://www.arduino.cc/en/Tutorial/Wifi101WiFiWebServer
 SD Card Controller:  Std Arduino library
@@ -121,11 +122,11 @@ String AlertString = "OK";
 
 // Constants
 long ReadInt = 30000; // Main interval variable used between sensor reads (milliseconds)
-long ReadUpd = ReadInt; //Update rate for ThingSpeak
+long ReadUpd = ReadInt*10; //Update rate for ThingSpeak
 short ReadExp = 0; //Scaling exponent for ThingSpeak
 short MaxExp = 10; //Maximum exponent allowed (sets update email interval (2^MaxExp*Readint milliseconds)
 long timestamp = 1498916136; // 7/1/2017 6:35 am PDT
-long DryThres = 100; // This is the Milone count level that decides whether there is water in the sump or not.
+long DryThres = 105; // This is the Milone count level that decides whether there is water in the sump or not.
 short Max_cm = 45; //45 is a guess - set this to the FS level above ground
 short Min_cm = 3; //3 is a guess - set this to the FS level above ground
 //ThingSpeak:
@@ -305,59 +306,59 @@ void loop() {
     SDCardWrite(timestamp);
     AlertString = "Milone Read: " + String(Milone_Read);
     
-    //Update Interval Check
-    //If dry, lengthen interval, otherwise shorten it
-    if (Milone_Read < DryThres)
-    {
-      ReadExp++;  //if dry, lengthen sample time
-      Serial.println("Incremented update exponent");
-      AlertString = AlertString + " " + "Less than " + String(Min_cm) + " cm water";
-    }
-    else
-    {
-      //Decrement if it gets wet..
-      Serial.println("Decrement exponent - wet");
-      ReadExp--;        
-      AlertString = AlertString + " " + String(Milone_Calc) + " cm water (xx cm triggers float)";
-      
-      if  (ReadUpd != ReadInt){
-        ReadUpd = ReadInt;
-        tUpdate.setTimeout(ReadUpd);
-        tUpdate.restart();
-      }
-    }  
-    // Limit to 2^MaxExp milliseconds
-    if (ReadExp > MaxExp)
-    {
-      ReadExp=MaxExp;
-    }
-
-    if (ReadExp < 0)
-    {
-      ReadExp = 0;
-    }
-
-    // Snap back if on alert
-    if (Alert != 0)
-    {
-      ReadExp=0;
-      
-      if (Alert == 1){
-        AlertString = "Running on battery: "+ AlertString;
-      }
-      else {
-        AlertString = "Float Sensor Triggered! " + AlertString;
-      }  
-          
-      Serial.println("Reset update exponent to 0 - problem");
-      if  (ReadUpd != ReadInt){
-        ReadUpd = ReadInt;
-        tUpdate.setTimeout(ReadUpd);
-        tUpdate.restart();
-      }
-    }
-    
-    ReadUpd = ReadInt * pow(2,ReadExp);  //Scale update rate relative to update interval
+//    //Update Interval Check
+//    //If dry, lengthen interval, otherwise shorten it
+//    if (Milone_Read < DryThres)
+//    {
+//      ReadExp++;  //if dry, lengthen sample time
+//      Serial.println("Incremented update exponent");
+//      AlertString = AlertString + " " + "Less than " + String(Min_cm) + " cm water";
+//    }
+//    else
+//    {
+//      //Decrement if it gets wet..
+//      Serial.println("Decrement exponent - wet");
+//      ReadExp--;        
+//      AlertString = AlertString + " " + String(Milone_Calc) + " cm water (xx cm triggers float)";
+//      
+//      if  (ReadUpd != ReadInt){
+//        ReadUpd = ReadInt;
+//        tUpdate.setTimeout(ReadUpd);
+//        tUpdate.restart();
+//      }
+//    }  
+//    // Limit to 2^MaxExp milliseconds
+//    if (ReadExp > MaxExp)
+//    {
+//      ReadExp=MaxExp;
+//    }
+//
+//    if (ReadExp < 0)
+//    {
+//      ReadExp = 0;
+//    }
+//
+//    // Snap back if on alert
+//    if (Alert != 0)
+//    {
+//      ReadExp=0;
+//      
+//      if (Alert == 1){
+//        AlertString = "Running on battery: "+ AlertString;
+//      }
+//      else {
+//        AlertString = "Float Sensor Triggered! " + AlertString;
+//      }  
+//          
+//      Serial.println("Reset update exponent to 0 - problem");
+//      if  (ReadUpd != ReadInt){
+//        ReadUpd = ReadInt;
+//        tUpdate.setTimeout(ReadUpd);
+//        tUpdate.restart();
+//      }
+//    }
+//    
+//    ReadUpd = ReadInt * pow(2,ReadExp);  //Scale update rate relative to update interval
   
   // Restart sensor timer
   tSensor.restart();
@@ -409,13 +410,13 @@ void loop() {
 
       //Send email through Temboo
       //AlertString = "Running OK";
-      Email_Temboo(AlertString);
+ //     Email_Temboo(AlertString);
   }
   // Vary this based on history
   // delay(ReadUpd); // ThingSpeak will only accept updates every 15 seconds. 
   
   //Send data to server
-  CallWiFi();
+ // CallWiFi();
   //Serial.print("doing other stuff ");
 }
 
